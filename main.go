@@ -14,7 +14,7 @@ import (
 
 var (
 	device = flag.String("device", "default", "implementation of ble")
-	du     = flag.Duration("du", 5*time.Second, "scanning duration")
+	du     = flag.Duration("du", 50000*time.Second, "scanning duration")
 	dup    = flag.Bool("dup", true, "allow duplicate reported")
 )
 
@@ -38,7 +38,7 @@ var rssis = map[string]int{}
 func advHandler(a ble.Advertisement) {
 	addr := a.Addr().String()
 	if r, ok := rssis[addr]; ok {
-		if r == a.RSSI() || ((-r)-(-a.RSSI())) < 10 {
+		if r == a.RSSI() {
 			return
 		}
 	}
