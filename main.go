@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/MichaelS11/go-hx711"
 )
@@ -30,8 +29,6 @@ func main() {
 
 	var data int
 	for {
-		time.Sleep(25 * time.Microsecond)
-
 		data, err = hx711.ReadDataRaw()
 		if err != nil {
 			fmt.Println("ReadDataRaw error:", err)
