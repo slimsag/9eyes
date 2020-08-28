@@ -38,7 +38,7 @@ var rssis = map[string]int{}
 func advHandler(a ble.Advertisement) {
 	addr := a.Addr().String()
 	if r, ok := rssis[addr]; ok {
-		if r == a.RSSI() {
+		if r == a.RSSI() || ((-r)-(-a.RSSI())) < 10 {
 			return
 		}
 	}
