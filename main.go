@@ -9,35 +9,61 @@ import (
 
 	"github.com/go-ble/ble"
 	"github.com/go-ble/ble/examples/lib/dev"
+	"github.com/pkg/errors"
+)
+
+var (
+	device = flag.String("device", "default", "implementation of ble")
+	du     = flag.Duration("du", 5*time.Second, "scanning duration")
+	dup    = flag.Bool("dup", true, "allow duplicate reported")
 )
 
 func main() {
-	macAddr := flag.String("addr", "", "peripheral MAC address")
 	flag.Parse()
-	hciDevice, err := dev.NewDevice("default")
+
+	d, err := dev.NewDevice(*device)
 	if err != nil {
-		panic(err)
+		log.Fatalf("can't new device : %s", err)
 	}
-	ble.SetDefaultDevice(hciDevice)
+	ble.SetDefaultDevice(d)
 
-	filter := func(a ble.Advertisement) bool {
-		return true
-		//return strings.ToUpper(a.Addr().String()) == strings.ToUpper(*macAddr)
+	// Scan for specified durantion, or until interrupted by user.
+	fmt.Printf("Scanning for %s...\n", *du)
+	ctx := ble.WithSigHandler(context.WithTimeout(context.Background(), *du))
+	chkErr(ble.Scan(ctx, *dup, advHandler, nil))
+}
+
+func advHandler(a ble.Advertisement) {
+	if a.Connectable() {
+		fmt.Printf("[%s] C %3d:", a.Addr(), a.RSSI())
+	} else {
+		fmt.Printf("[%s] N %3d:", a.Addr(), a.RSSI())
 	}
-
-	// Scan for device
-	log.Printf("Scanning for %s\n", *macAddr)
-	ctx := ble.WithSigHandler(context.WithTimeout(context.Background(), time.Second*300))
-	client, err := ble.Connect(ctx, filter)
-	if err != nil {
-		panic(err)
+	comma := ""
+	if len(a.LocalName()) > 0 {
+		fmt.Printf(" Name: %s", a.LocalName())
+		comma = ","
 	}
-
-	for {
-		fmt.Printf("Client side RSSI: %d\n", client.ReadRSSI())
-		time.Sleep(time.Second)
+	if len(a.Services()) > 0 {
+		fmt.Printf("%s Svcs: %v", comma, a.Services())
+		comma = ","
 	}
+	if len(a.ManufacturerData()) > 0 {
+		fmt.Printf("%s MD: %X", comma, a.ManufacturerData())
+	}
+	fmt.Printf("\n")
+}
 
+func chkErr(err error) {
+	switch errors.Cause(err) {
+	case nil:
+	case context.DeadlineExceeded:
+		fmt.Printf("done\n")
+	case context.Canceled:
+		fmt.Printf("canceled\n")
+	default:
+		log.Fatalf(err.Error())
+	}
 }
 
 /*
