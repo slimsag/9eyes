@@ -1,44 +1,43 @@
 package main
 
 import (
+	"context"
+	"flag"
 	"fmt"
 	"log"
+	"time"
 
-	"github.com/paypal/gatt"
-	"github.com/paypal/gatt/examples/option"
+	"github.com/go-ble/ble"
+	"github.com/go-ble/ble/examples/lib/dev"
 )
 
-func onStateChanged(d gatt.Device, s gatt.State) {
-	fmt.Println("State:", s)
-	switch s {
-	case gatt.StatePoweredOn:
-		fmt.Println("scanning...")
-		d.Scan([]gatt.UUID{}, false)
-		return
-	default:
-		d.StopScanning()
-	}
-}
-
-func onPeriphDiscovered(p gatt.Peripheral, a *gatt.Advertisement, rssi int) {
-	fmt.Printf("\nPeripheral ID:%s, NAME:(%s)\n", p.ID(), p.Name())
-	fmt.Println("  Local Name        =", a.LocalName)
-	fmt.Println("  TX Power Level    =", a.TxPowerLevel)
-	fmt.Println("  Manufacturer Data =", a.ManufacturerData)
-	fmt.Println("  Service Data      =", a.ServiceData)
-}
-
 func main() {
-	d, err := gatt.NewDevice(option.DefaultClientOptions...)
+	macAddr := flag.String("addr", "", "peripheral MAC address")
+	flag.Parse()
+	hciDevice, err := dev.NewDevice("default")
 	if err != nil {
-		log.Fatalf("Failed to open device, err: %s\n", err)
-		return
+		panic(err)
+	}
+	ble.SetDefaultDevice(hciDevice)
+
+	filter := func(a ble.Advertisement) bool {
+		return true
+		//return strings.ToUpper(a.Addr().String()) == strings.ToUpper(*macAddr)
 	}
 
-	// Register handlers.
-	d.Handle(gatt.PeripheralDiscovered(onPeriphDiscovered))
-	d.Init(onStateChanged)
-	select {}
+	// Scan for device
+	log.Printf("Scanning for %s\n", *macAddr)
+	ctx := ble.WithSigHandler(context.WithTimeout(context.Background(), time.Second*300))
+	client, err := ble.Connect(ctx, filter)
+	if err != nil {
+		panic(err)
+	}
+
+	for {
+		fmt.Printf("Client side RSSI: %d\n", client.ReadRSSI())
+		time.Sleep(time.Second)
+	}
+
 }
 
 /*
