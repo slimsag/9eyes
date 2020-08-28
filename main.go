@@ -35,12 +35,12 @@ func main() {
 
 func advHandler(a ble.Advertisement) {
 	if a.Connectable() {
-		fmt.Printf("[%s] C %v:", a.Addr(), a.RSSI())
+		fmt.Printf("[%s] C %v:\n", a.Addr(), a.RSSI())
 	} else {
-		fmt.Printf("[%s] N %v:", a.Addr(), a.RSSI())
+		fmt.Printf("[%s] N %v:\n", a.Addr(), a.RSSI())
 	}
 	if len(a.LocalName()) > 0 {
-		fmt.Printf(" Name: %s", a.LocalName())
+		fmt.Printf(" Name: %s\n", a.LocalName())
 	}
 }
 
