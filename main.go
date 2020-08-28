@@ -35,23 +35,13 @@ func main() {
 
 func advHandler(a ble.Advertisement) {
 	if a.Connectable() {
-		fmt.Printf("[%s] C %3d:", a.Addr(), a.RSSI())
+		fmt.Printf("[%s] C %v:", a.Addr(), a.RSSI())
 	} else {
-		fmt.Printf("[%s] N %3d:", a.Addr(), a.RSSI())
+		fmt.Printf("[%s] N %v:", a.Addr(), a.RSSI())
 	}
-	comma := ""
 	if len(a.LocalName()) > 0 {
 		fmt.Printf(" Name: %s", a.LocalName())
-		comma = ","
 	}
-	if len(a.Services()) > 0 {
-		fmt.Printf("%s Svcs: %v", comma, a.Services())
-		comma = ","
-	}
-	if len(a.ManufacturerData()) > 0 {
-		fmt.Printf("%s MD: %X", comma, a.ManufacturerData())
-	}
-	fmt.Printf("\n")
 }
 
 func chkErr(err error) {
