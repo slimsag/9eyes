@@ -16,6 +16,7 @@ var (
 	device = flag.String("device", "default", "implementation of ble")
 	du     = flag.Duration("du", 50000*time.Second, "scanning duration")
 	dup    = flag.Bool("dup", true, "allow duplicate reported")
+	ge     = flag.Int("ge", 60, "")
 )
 
 func main() {
@@ -35,6 +36,9 @@ func main() {
 
 func advHandler(a ble.Advertisement) {
 	addr := a.Addr().String()
+	if a.RSSI() > *ge {
+		return
+	}
 	if a.Connectable() {
 		fmt.Printf("[%s] C %v:\n", addr, a.RSSI())
 	} else {
