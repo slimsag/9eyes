@@ -33,11 +33,20 @@ func main() {
 	chkErr(ble.Scan(ctx, *dup, advHandler, nil))
 }
 
+var rssis = map[string]int{}
+
 func advHandler(a ble.Advertisement) {
+	addr := a.Addr().String()
+	if r, ok := rssis[addr]; ok {
+		if r == a.RSSI() {
+			return
+		}
+	}
+	rssis[addr] = a.RSSI()
 	if a.Connectable() {
-		fmt.Printf("[%s] C %v:\n", a.Addr(), a.RSSI())
+		fmt.Printf("[%s] C %v:\n", addr, a.RSSI())
 	} else {
-		fmt.Printf("[%s] N %v:\n", a.Addr(), a.RSSI())
+		fmt.Printf("[%s] N %v:\n", addr, a.RSSI())
 	}
 	if len(a.LocalName()) > 0 {
 		fmt.Printf(" Name: %s\n", a.LocalName())
