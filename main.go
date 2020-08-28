@@ -36,7 +36,7 @@ func main() {
 
 func advHandler(a ble.Advertisement) {
 	addr := a.Addr().String()
-	if a.RSSI() > *ge {
+	if -a.RSSI() > *ge {
 		return
 	}
 	if a.Connectable() {
