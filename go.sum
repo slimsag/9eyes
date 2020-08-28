@@ -1,0 +1,5 @@
+github.com/MichaelS11/go-hx711 v1.0.0 h1:B6b2Gg4mEgb98LrUdwvpbzQwgxp+C6jtwUn0fuDD6WA=
+github.com/MichaelS11/go-hx711 v1.0.0/go.mod h1:VU0KBdA+wBFtLM+Mvoc5ztBXoNpSZCxRtNCyfTVvIpk=
+github.com/stianeikeland/go-rpio/v4 v4.4.0/go.mod h1:BkK52zk+FRk8wCTDf88/86Sojc+NfUiCAHd1ZV3RuTM=
+periph.io/x/periph v3.6.2+incompatible h1:B9vqhYVuhKtr6bXua8N9GeBEvD7yanczCvE0wU2LEqw=
+periph.io/x/periph v3.6.2+incompatible/go.mod h1:EWr+FCIU2dBWz5/wSWeiIUJTriYv9v2j2ENBmgYyy7Y=
