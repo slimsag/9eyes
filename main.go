@@ -38,7 +38,7 @@ var watching = map[string]bool{"c0:36:ee:cd:4e:88": true}
 
 func advHandler(a ble.Advertisement) {
 	addr := a.Addr().String()
-	if a.RSSI() < -30 {
+	if a.RSSI() > -30 {
 		watching[addr] = true
 	}
 	if _, ok := watching[addr]; !ok {
