@@ -113,9 +113,8 @@ func main() {
 			return nil
 		}
 		for {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(1 * time.Second)
 			bufferMu.Lock()
-			fmt.Println("send", len(buffer))
 			if len(buffer) > 0 {
 				if err := sendBuffered(); err != nil {
 					log.Println("sendBuffered:", err)
