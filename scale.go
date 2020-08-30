@@ -30,15 +30,25 @@ func (s *scale) start(ctx context.Context) error {
 		return errors.Wrap(err, "HostInit")
 	}
 
-	hx711, err := hx711.NewHx711("6", "5")
-	if err != nil {
-		return errors.Wrap(err, "NewHx711")
-	}
-	defer hx711.Shutdown()
+	var device *hx711.Hx711
+	hardReset := func() error {
+		if device != nil {
+			device.Shutdown()
+		}
+		var err error
+		device, err = hx711.NewHx711("6", "5")
+		if err != nil {
+			return errors.Wrap(err, "NewHx711")
+		}
 
-	err = hx711.Reset()
-	if err != nil {
-		return errors.Wrap(err, "Reset")
+		err = device.Reset()
+		if err != nil {
+			return errors.Wrap(err, "Reset")
+		}
+		return nil
+	}
+	if err := hardReset(); err != nil {
+		return errors.Wrap(err, "hardReset")
 	}
 
 	var previousSamples []float64
@@ -47,7 +57,7 @@ func (s *scale) start(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		data, err := hx711.ReadDataRaw()
+		data, err := device.ReadDataRaw()
 		if err != nil {
 			log.Println("Hx711 read error:", err)
 			continue
@@ -60,7 +70,9 @@ func (s *scale) start(ctx context.Context) error {
 		}
 		samples = append(samples, float64(data))
 		if len(samples) >= s.sampleSize {
-			hx711.Reset()
+			if err := hardReset(); err != nil {
+				return errors.Wrap(err, "hardReset")
+			}
 			raw := sample(samples)
 			samples = nil
 			if s.movingAverage != 0 {
