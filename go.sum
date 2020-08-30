@@ -28,6 +28,8 @@ github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQD
 github.com/shurcooL/sanitized_anchor_name v1.0.0/go.mod h1:1NzhyTcUVG4SuEtjjoZeVRXNmyL/1OwPU0+IJeTBvfc=
 github.com/slimsag/go-hx711 v1.0.1-0.20200830024524-f8c95ae77379 h1:+FEfpc1rL6xPiA3KTJBKQlFYyGrkIbSRCLrdAJrt+PE=
 github.com/slimsag/go-hx711 v1.0.1-0.20200830024524-f8c95ae77379/go.mod h1:VU0KBdA+wBFtLM+Mvoc5ztBXoNpSZCxRtNCyfTVvIpk=
+github.com/slimsag/go-hx711 v1.0.1-0.20200830024620-c342655de69d h1:kcsv/i8erJw3qqZTQmW0q+a4FwfC5hUqy5NaxesyCjM=
+github.com/slimsag/go-hx711 v1.0.1-0.20200830024620-c342655de69d/go.mod h1:VU0KBdA+wBFtLM+Mvoc5ztBXoNpSZCxRtNCyfTVvIpk=
 github.com/stianeikeland/go-rpio/v4 v4.4.0 h1:LScvNyXHF412co42LG5t7bvBDbtDAhLF828ebaGqmjA=
 github.com/stianeikeland/go-rpio/v4 v4.4.0/go.mod h1:BkK52zk+FRk8wCTDf88/86Sojc+NfUiCAHd1ZV3RuTM=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=

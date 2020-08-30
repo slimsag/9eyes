@@ -12,4 +12,4 @@ require (
 	periph.io/x/periph v3.6.4+incompatible // indirect
 )
 
-replace github.com/MichaelS11/go-hx711 => ../go-hx711
+replace github.com/MichaelS11/go-hx711 => github.com/slimsag/go-hx711 v1.0.1-0.20200830024620-c342655de69d
