@@ -2,8 +2,30 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"flag"
+	"fmt"
 	"log"
+	"sync"
+	"time"
+
+	"github.com/keegancsmith/sqlf"
+	_ "github.com/lib/pq"
+	"github.com/pkg/errors"
+)
+
+var (
+	useTracker     = flag.Bool("tracker", true, "scan for tile trackers")
+	trackerVerbose = flag.Bool("tracker-verbose", false, "print raw tracker events")
+	clientName     = flag.String("client", "unnamed", "name of this client / raspberry pi")
+
+	useScale           = flag.Bool("scale", true, "read Hx711 scale weight values")
+	scaleVerbose       = flag.Bool("scale-verbose", false, "print raw scale weight values for determining baseline")
+	scaleBaseline      = flag.Float64("scale-baseline", 0.0, "set base weight of scale (with nothing on it)")
+	scaleDivisor       = flag.Float64("scale-divisor", 1.0, "set divisor for scale, i.e. what to divide units by to get grams")
+	scaleInvert        = flag.Bool("scale-invert", false, "whether to invert numbers from the scale")
+	scaleSampleSize    = flag.Int("scale-sample-size", 4, "number of samples to read, denoise, and average to determine scale sensor value")
+	scaleMovingAverage = flag.Int("scale-moving-average", 10, "number of past scale sensor values to denoise and average against")
 )
 
 func main() {
@@ -11,62 +33,154 @@ func main() {
 
 	// Tracke Tile trackers / BLE beacons.
 	t := &tracker{
-		results: make(chan trackerResult),
+		results: make(chan trackerResult, 100),
 	}
+	if *useTracker {
+		go func() {
+			log.Println("Tracking tile trackers...")
+			ctx := context.Background()
+			if err := t.start(ctx); err != nil {
+				log.Fatal(err)
+			}
+		}()
+	}
+
+	s := &scale{
+		results:       make(chan scaleResult, 100),
+		baseline:      *scaleBaseline,
+		divisor:       *scaleDivisor,
+		invert:        *scaleInvert,
+		sampleSize:    *scaleSampleSize,
+		movingAverage: *scaleMovingAverage,
+	}
+	if *useScale {
+		go func() {
+			log.Println("Monitoring Hx711 scale...")
+			ctx := context.Background()
+			if err := s.start(ctx); err != nil {
+				log.Fatal(err)
+			}
+		}()
+	}
+
+	var (
+		latestScale                   scaleResult
+		latestTrackers                = map[string]trackerResult{}
+		updatedScale, updatedTrackers bool
+
+		bufferMu sync.Mutex
+		buffer   = make([]result, 0, 100)
+	)
 	go func() {
-		log.Println("Tracking tile trackers...")
-		ctx := context.Background()
-		if err := t.start(ctx); err != nil {
+		db, err := sql.Open("postgres", "user=postgres dbname=9eyes sslmode=disable password=password")
+		if err != nil {
 			log.Fatal(err)
 		}
-	}()
 
-	for {
-		ev := <-t.results
-		_ = ev
-	}
-}
+		sendBuffered := func() error {
+			var trackerInserts, scaleInserts []*sqlf.Query
+			for _, r := range buffer {
+				for _, tr := range r.trackers {
+					trackerInserts = append(trackerInserts, sqlf.Sprintf("(%v, %v, %v, %v)", r.t, *clientName, tr.addr, tr.rssi))
+				}
+				scaleInserts = append(scaleInserts, sqlf.Sprintf("(%v, %v, %v)", r.t, *clientName, r.scale.grams))
+			}
 
-/*
-package main
+			tx, err := db.Begin()
+			if err != nil {
+				return errors.Wrap(err, "begin")
+			}
 
-import (
-	"fmt"
+			if len(trackerInserts) > 0 {
+				q := sqlf.Sprintf(`INSERT INTO distance(time, location, cat, distance) VALUES %s;`, sqlf.Join(trackerInserts, ", "))
+				_, err = db.Exec(q.Query(sqlf.PostgresBindVar), q.Args()...)
+				if err != nil {
+					tx.Rollback()
+					return errors.Wrap(err, "insert distance")
+				}
+			}
 
-	"github.com/MichaelS11/go-hx711"
-)
-
-func main() {
-	err := hx711.HostInit()
-	if err != nil {
-		fmt.Println("HostInit error:", err)
-		return
-	}
-
-	hx711, err := hx711.NewHx711("GPIO6", "GPIO5")
-	if err != nil {
-		fmt.Println("NewHx711 error:", err)
-		return
-	}
-
-	defer hx711.Shutdown()
-
-	err = hx711.Reset()
-	if err != nil {
-		fmt.Println("Reset error:", err)
-		return
-	}
-
-	var data int
-	for {
-		data, err = hx711.ReadDataRaw()
-		if err != nil {
-			fmt.Println("ReadDataRaw error:", err)
-			continue
+			q := sqlf.Sprintf(`INSERT INTO scale(time, location, weight_g) VALUES %s;`, sqlf.Join(scaleInserts, ", "))
+			_, err = db.Exec(q.Query(sqlf.PostgresBindVar), q.Args()...)
+			if err != nil {
+				tx.Rollback()
+				return errors.Wrap(err, "insert scale")
+			}
+			if err := tx.Commit(); err != nil {
+				tx.Rollback()
+				return errors.Wrap(err, "commit")
+			}
+			return nil
 		}
+		for {
+			time.Sleep(100 * time.Millisecond)
+			bufferMu.Lock()
+			fmt.Println("send", len(buffer))
+			if len(buffer) > 0 {
+				if err := sendBuffered(); err != nil {
+					log.Println("sendBuffered:", err)
+				} else {
+					buffer = buffer[0:0]
+				}
+			}
+			bufferMu.Unlock()
+		}
+	}()
+	for {
+		select {
+		case ev := <-t.results:
+			if *trackerVerbose {
+				fmt.Println("tracker:", ev.addr, ev.rssi)
+			}
+			latestTrackers[ev.addr] = ev
+		empty:
+			for {
+				select {
+				case ev := <-t.results:
+					if *trackerVerbose {
+						fmt.Println("tracker:", ev.addr, ev.rssi)
+					}
+					latestTrackers[ev.addr] = ev
+				default:
+					break empty
+				}
+			}
+			updatedTrackers = true
 
-		fmt.Println(data)
+			if updatedScale && updatedTrackers {
+				bufferMu.Lock()
+				buffer = append(buffer, newResult(latestScale, latestTrackers))
+				bufferMu.Unlock()
+			}
+		case latestScale = <-s.results:
+			if *scaleVerbose {
+				fmt.Println("scale:", "raw:", int(latestScale.raw), "\t\tgrams:", int(latestScale.grams))
+			}
+			updatedScale = true
+
+			if updatedScale && updatedTrackers {
+				bufferMu.Lock()
+				buffer = append(buffer, newResult(latestScale, latestTrackers))
+				bufferMu.Unlock()
+			}
+		}
 	}
-
 }
-*/
+
+type result struct {
+	t        time.Time
+	scale    scaleResult
+	trackers map[string]trackerResult
+}
+
+func newResult(scale scaleResult, trackers map[string]trackerResult) result {
+	cpy := make(map[string]trackerResult, len(trackers))
+	for k, v := range trackers {
+		cpy[k] = v
+	}
+	return result{
+		t:        time.Now(),
+		scale:    scale,
+		trackers: cpy,
+	}
+}
