@@ -60,7 +60,7 @@ func (s *scale) start(ctx context.Context) error {
 		}
 		samples = append(samples, float64(data))
 		if len(samples) >= s.sampleSize {
-			//hx711.Reset()
+			hx711.Reset()
 			raw := sample(samples)
 			samples = nil
 			if s.movingAverage != 0 {
