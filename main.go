@@ -79,7 +79,10 @@ func main() {
 
 		sendBuffered := func() error {
 			var trackerInserts, scaleInserts []*sqlf.Query
-			for _, r := range buffer {
+			maxPostgresParams := 65535
+			paramsPerResult := 7
+			maxResults := (maxPostgresParams / paramsPerResult) - 1
+			for _, r := range buffer[:maxResults] {
 				for _, tr := range r.trackers {
 					trackerInserts = append(trackerInserts, sqlf.Sprintf("(%v, %v, %v, %v)", r.t, *clientName, tr.addr, tr.rssi))
 				}
@@ -110,6 +113,7 @@ func main() {
 				tx.Rollback()
 				return errors.Wrap(err, "commit")
 			}
+			buffer = buffer[maxResults:]
 			return nil
 		}
 		for {
@@ -118,8 +122,6 @@ func main() {
 			if len(buffer) > 0 {
 				if err := sendBuffered(); err != nil {
 					log.Println("sendBuffered:", err)
-				} else {
-					buffer = buffer[0:0]
 				}
 			}
 			bufferMu.Unlock()
