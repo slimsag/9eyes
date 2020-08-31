@@ -82,6 +82,9 @@ func main() {
 			maxPostgresParams := 65535
 			paramsPerResult := 7
 			maxResults := (maxPostgresParams / paramsPerResult) - 1
+			if maxResults > len(buffer) {
+				maxResults = len(buffer)
+			}
 			for _, r := range buffer[:maxResults] {
 				for _, tr := range r.trackers {
 					trackerInserts = append(trackerInserts, sqlf.Sprintf("(%v, %v, %v, %v)", r.t, *clientName, tr.addr, tr.rssi))
